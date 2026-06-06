@@ -1,14 +1,9 @@
 import type { Request, Response } from "express";
-import { prisma } from "../lib/prisma.js";
-import z from "zod";
-
-const goalsWeightsSchema = z.object({
-  targetWeight: z.number(),
-});
-
-const goalsWaterSchema = z.object({
-  targetWater: z.number(),
-});
+import goalsService from "../services/goalsService.js";
+import {
+  goalsWaterSchema,
+  goalsWeightsSchema,
+} from "../schemas/goals.schema.js";
 
 class goalsController {
   async setWeightGoals(req: Request, res: Response) {
@@ -20,36 +15,28 @@ class goalsController {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const goalWeight = await prisma.goal.create({
-      data: {
+    try {
+      const goalWeight = await goalsService.createWeightGoal(
         userId,
         targetWeight,
-        isCompletedWeight: false,
-      },
-    });
+      );
 
-    return res.json({
-      message: "Goal updated successfully",
-      data: goalWeight.targetWeight,
-    });
+      res.status(200).json(goalWeight);
+    } catch (error: any) {
+      return res.status(400).json({ message: error.message });
+    }
   }
 
   async getWeightGoals(req: Request, res: Response) {
     const userId = req.userId;
 
-    const goalWeight = await prisma.goal.findMany({
-      where: {
-        userId: userId,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    try {
+      const goalWeight = await goalsService.getWeightGoals(userId);
 
-    return res.json({
-      message: "Goal fetched successfully",
-      data: goalWeight,
-    });
+      res.status(200).json(goalWeight);
+    } catch (error: any) {
+      return res.status(400).json({ message: error.message });
+    }
   }
 
   async setWaterGoals(req: Request, res: Response) {
@@ -61,33 +48,25 @@ class goalsController {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    await prisma.goal.create({
-      data: {
-        userId,
-        targetWater,
-        isCompletedWater: false,
-      },
-    });
+    try {
+      const goalWater = await goalsService.setWaterGoals(userId, targetWater);
 
-    return res.json({
-      message: "Goal updated successfully",
-      data: { targetWater },
-    });
+      res.status(200).json(goalWater);
+    } catch (error: any) {
+      return res.status(400).json({ message: error.message });
+    }
   }
 
   async getWaterGoals(req: Request, res: Response) {
     const userId = req.userId;
 
-    const goal = await prisma.goal.findMany({
-      where: {
-        userId: userId,
-      },
-    });
+    try {
+      const goalWater = await goalsService.getWaterGoals(userId);
 
-    return res.json({
-      message: "Goal fetched successfully",
-      data: goal,
-    });
+      res.status(200).json(goalWater);
+    } catch (error: any) {
+      return res.status(400).json({ message: error.message });
+    }
   }
 }
 

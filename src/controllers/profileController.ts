@@ -1,15 +1,9 @@
 import { type Request, type Response } from "express";
-import { prisma } from "../lib/prisma.js";
-import { z } from "zod";
-
-const ProfileSchema = z.object({
-  name: z.string(),
-  height: z.coerce.number(),
-  targetWeight: z.coerce.number(),
-});
+import profileService from "../services/profileService.js";
+import { ProfileSchema } from "../schemas/profile.schema.js";
 
 class ProfileController {
-  async updateProfile(req: Request, res: Response) {
+  async setProfile(req: Request, res: Response) {
     const { name, height, targetWeight } = ProfileSchema.parse(req.body);
 
     const userId = req.userId;
@@ -18,40 +12,36 @@ class ProfileController {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const updateProfile = await prisma.user.update({
-      where: { id: userId },
-      data: {
-        profile: {
-          upsert: {
-            create: { name, height, targetWeight },
-            update: { name, height, targetWeight },
-          },
-        },
-      },
-    });
+    try {
+      const profile = await profileService.setProfile(
+        name,
+        height,
+        targetWeight,
+        userId,
+      );
 
-    return res.json({
-      message: "Profile updated successfully",
-      data: updateProfile,
-    });
+      return res.json({
+        message: "Profile updated successfully",
+        data: profile,
+      });
+    } catch (error: any) {
+      return res.status(400).json({ message: error.message });
+    }
   }
 
   async getProfile(req: Request, res: Response) {
     const userId = req.userId;
 
-    const user = await prisma.user.findUnique({
-      where: {
-        id: userId,
-      },
-      include: {
-        profile: true,
-      },
-    });
+    try {
+      const profile = await profileService.getProfile(userId);
 
-    return res.json({
-      message: "Profile fetched successfully",
-      data: user?.profile,
-    });
+      return res.json({
+        message: "Profile fetched successfully",
+        data: profile,
+      });
+    } catch (error: any) {
+      return res.status(400).json({ message: error.message });
+    }
   }
 }
 

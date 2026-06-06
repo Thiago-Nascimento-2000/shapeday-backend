@@ -15,7 +15,7 @@ router.put("/change-password", authMiddleware, authController.changePassword);
 router.put("/change-email", authMiddleware, authController.changeEmail);
 
 router.get("/profile", authMiddleware, profileController.getProfile);
-router.put("/profile", authMiddleware, profileController.updateProfile);
+router.put("/profile", authMiddleware, profileController.setProfile);
 
 router.post("/weights", authMiddleware, weightsController.setWeight);
 router.get("/weights", authMiddleware, weightsController.getWeight);
