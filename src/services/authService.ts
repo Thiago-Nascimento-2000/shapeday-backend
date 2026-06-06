@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import ENV from "../env/index.js";
 import * as authTypes from "../types/auth.type.js";
+import AuthRepository from "../repositories/authRepository.js";
 
 class AuthService {
   async register({
@@ -11,11 +12,7 @@ class AuthService {
     password,
     confirmPassword,
   }: authTypes.RegisterData) {
-    const emailExists = await prisma.user.findUnique({
-      where: {
-        email: email,
-      },
-    });
+    const emailExists = await AuthRepository.findByEmail(email);
 
     if (emailExists) {
       throw new Error("Email already exists");
@@ -25,28 +22,13 @@ class AuthService {
       throw new Error("Passwords do not match");
     }
 
-    const HashPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    await prisma.user.create({
-      data: {
-        name: name,
-        email: email,
-        password: HashPassword,
-      },
-    });
+    return AuthRepository.createAccount(name, email, hashedPassword);
   }
 
   async login({ email, password }: authTypes.LoginData) {
-    const findUser = await prisma.user.findUnique({
-      where: {
-        email: email,
-      },
-      select: {
-        id: true,
-        password: true,
-        email: true,
-      },
-    });
+    const findUser = await AuthRepository.findUserEmail(email);
 
     if (!findUser) {
       throw new Error("Invalid email or password");
@@ -70,14 +52,7 @@ class AuthService {
   }
 
   async changePassword(data: authTypes.ChangePasswordData) {
-    const userFromDB = await prisma.user.findUnique({
-      where: {
-        id: data.userId,
-      },
-      select: {
-        password: true,
-      },
-    });
+    const userFromDB = await AuthRepository.findUserId(data);
 
     if (!userFromDB) {
       throw new Error("User not found");
@@ -100,27 +75,11 @@ class AuthService {
 
     const hashedPassword = bcrypt.hashSync(data.newPassword, 10);
 
-    await prisma.user.update({
-      where: {
-        id: data.userId,
-      },
-      data: {
-        password: hashedPassword,
-      },
-    });
+    await AuthRepository.updateUserPassword(data, hashedPassword);
   }
 
   async changeEmail({ userId, password, newEmail }: authTypes.ChangeEmailData) {
-    const userFromDB = await prisma.user.findUnique({
-      where: {
-        id: userId,
-      },
-      select: {
-        password: true,
-        email: true,
-      },
-    });
-
+    const userFromDB = await AuthRepository.findUserEmail(userId);
     if (!userFromDB) {
       throw new Error("User not found");
     }
@@ -131,11 +90,7 @@ class AuthService {
       throw new Error("Password is incorrect");
     }
 
-    const emailExists = await prisma.user.findUnique({
-      where: {
-        email: newEmail,
-      },
-    });
+    const emailExists = await AuthRepository.findUserNewEmail(newEmail);
 
     if (emailExists) {
       throw new Error("Email already exists");
@@ -145,14 +100,7 @@ class AuthService {
       throw new Error("New email cannot be the same as the current email");
     }
 
-    await prisma.user.update({
-      where: {
-        id: userId,
-      },
-      data: {
-        email: newEmail,
-      },
-    });
+    await AuthRepository.updateUserNewEmail(userId, newEmail);
   }
 }
 
